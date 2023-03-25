@@ -1,3 +1,7 @@
 export const pageCacheKey: (id: string) => string = (id: string): string => {
 	return `pagecache#${id}`;
 };
+
+export const usersKey = (userId: string) => {
+	return `users#${userId}`;
+};
