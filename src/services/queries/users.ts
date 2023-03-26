@@ -5,16 +5,32 @@ import { usersKey } from '$services/keys';
 
 export const getUserByUsername = async (username: string) => {};
 
-export const getUserById = async (id: string) => {};
+export const getUserById = async (id: string) => {
+	const user = await client.hGetAll(usersKey(id));
+
+	return deserialize(id, user);
+};
 
 export const createUser = async (attrs: CreateUserAttrs) => {
 	const id = genId();
 	// usersKey(id) is the key in the redis
 	// the second argument object is the key value pairs that are stored in the usersKey(id) key.
-	await client.hSet(usersKey(id), {
-		username: attrs.username,
-		password: attrs.password
-	});
+	await client.hSet(usersKey(id), serialize(attrs));
 
 	return id;
+};
+
+const serialize = (user: CreateUserAttrs) => {
+	return {
+		username: user.username,
+		password: user.password
+	};
+};
+
+const deserialize = (id: string, user: { [key: string]: string }) => {
+	return {
+		id: id,
+		username: user.username,
+		password: user.password
+	};
 };
