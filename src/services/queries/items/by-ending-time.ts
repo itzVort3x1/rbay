@@ -8,5 +8,11 @@ export const itemsByEndingTime = async (order: 'DESC' | 'ASC' = 'DESC', offset =
 		LIMIT: { offset, count }
 	});
 
-	console.log(ids);
+	const results = await Promise.all(
+		ids.map((id) => {
+			return client.hGetAll(itemsKey(id));
+		})
+	);
+
+	return results.map((item, i) => deserialize(ids[i], item));
 };
