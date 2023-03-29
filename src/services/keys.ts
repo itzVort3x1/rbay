@@ -34,3 +34,7 @@ export const itemsByViewsKey = () => {
 export const itemsByEndingAtKey = () => {
 	return `items:endingAt`;
 };
+
+export const itemsViewsKey = (itemId: string) => {
+	return `items:views#${itemId}`;
+};
