@@ -38,3 +38,7 @@ export const itemsByEndingAtKey = () => {
 export const itemsViewsKey = (itemId: string) => {
 	return `items:views#${itemId}`;
 };
+
+export const bidHistoryKey = (itemId: string) => {
+	return `history#${itemId}`;
+};
