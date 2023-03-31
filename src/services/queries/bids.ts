@@ -1,34 +1,43 @@
 import type { CreateBidAttrs, Bid } from '$services/types';
-import { bidHistoryKey, itemsKey } from '$services/keys';
+import { bidHistoryKey, itemsKey, itemsByPriceKey } from '$services/keys';
 import { client } from '$services/redis';
 import { DateTime } from 'luxon';
 import { getItem } from './items';
 
 export const createBid = async (attrs: CreateBidAttrs) => {
-	const item = await getItem(attrs.itemId);
+	return client.executeIsolated(async (isolatedClient) => {
+		await isolatedClient.watch(itemsKey(attrs.itemId));
 
-	if (!item) {
-		throw new Error('Item does not exist');
-	}
+		const item = await getItem(attrs.itemId);
 
-	if (item.price >= attrs.amount) {
-		throw new Error('Bid too low');
-	}
+		if (!item) {
+			throw new Error('Item does not exist');
+		}
 
-	if (item.endingAt.diff(DateTime.now()).toMillis() < 0) {
-		throw new Error('Item has already ended');
-	}
+		if (item.price >= attrs.amount) {
+			throw new Error('Bid too low');
+		}
 
-	const serialized = serializeHistory(attrs.amount, attrs.createdAt.toMillis());
+		if (item.endingAt.diff(DateTime.now()).toMillis() < 0) {
+			throw new Error('Item has already ended');
+		}
 
-	Promise.all([
-		client.rPush(bidHistoryKey(attrs.itemId), serialized),
-		client.hSet(itemsKey(attrs.itemId), {
-			bids: item.bids + 1,
-			price: attrs.amount,
-			highestBidUserId: attrs.userId
-		})
-	]);
+		const serialized = serializeHistory(attrs.amount, attrs.createdAt.toMillis());
+
+		return isolatedClient
+			.multi()
+			.rPush(bidHistoryKey(attrs.itemId), serialized)
+			.hSet(itemsKey(attrs.itemId), {
+				bids: item.bids + 1,
+				price: attrs.amount,
+				highestBidUserId: attrs.userId
+			})
+			.zAdd(itemsByPriceKey(), {
+				value: item.id,
+				score: attrs.amount
+			})
+			.exec();
+	});
 };
 
 export const getBidHistory = async (itemId: string, offset = 0, count = 10): Promise<Bid[]> => {
