@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 import { client } from './client';
 
-export const withLock = async (key: string, cb: () => any) => {
+export const withLock = async (key: string, cb: (signal: any) => any) => {
 	// Initialize a few variables to control retry behavior
 
 	const retryDelayMs = 100;
@@ -28,10 +28,14 @@ export const withLock = async (key: string, cb: () => any) => {
 		}
 		// If the set is successful, then run the callback
 		try {
-			const result = await cb();
+			const signal = { expired: false };
+			setTimeout(() => {
+				signal.expired = true;
+			}, 2000);
+			const result = await cb(signal);
 			return result;
 		} finally {
-			await client.del(lockKey);
+			await client.unlock(lockKey, token);
 		}
 		// ELSE brief pause (retryDelayMs) and try again
 	}
